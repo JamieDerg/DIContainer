@@ -1,0 +1,20 @@
+{
+  "name": "di_container",
+  "version": "1.0.0",
+  "description": "A simple Decorator based DI container",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "dependencyInjection"
+  ],
+  "author": "JamieDerg",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
