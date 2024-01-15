@@ -1,4 +1,4 @@
-import {DependencyData} from "../types/Types";
+import {PropertyBindData, DependencyType, MethodInjectionData} from "../types/Types";
 
 /**
  * Class Property Decorator, will inject the given Dependency in decorate property
@@ -7,18 +7,18 @@ import {DependencyData} from "../types/Types";
  * @param name of the Dependency to inject
  */
 export function Inject(name: string) {
-    console.log("inject")
     return function (target: any, context: ClassFieldDecoratorContext) {
         context.addInitializer(function () {
-            if (this["_dependencies"] == undefined) {
-                this["_dependencies"] = [];
+            if (this["_dependencyBindDataList"] == undefined) {
+                this["_dependencyBindDataList"] = [];
             }
 
-            (this["_dependencies"] as DependencyData[]).push({
+            (this["_dependencyBindDataList"] as PropertyBindData[]).push({
                 property: context.name as string,
-                target: name
+                target: name,
+                type: DependencyType.SINGULAR
             });
         })
     }
-
 }
+

@@ -1,4 +1,10 @@
-import {ComponentMethod, ComponentMethodData, DependencyData} from "../types/Types";
+import {
+    ComponentMethod,
+    ComponentMethodData,
+    PropertyBindData,
+    DependencyType, InjectableParameters,
+    MethodInjectionData
+} from "../types/Types";
 
 /**
  * Decorator to decorate a Method as a component method.
@@ -9,7 +15,7 @@ import {ComponentMethod, ComponentMethodData, DependencyData} from "../types/Typ
  * @param groups Optional, String array containing names this component can be grouped by.
  **
  */
-export function Component(name = "", groups: string[] = []) {
+export function Component(name = "", groups: string[] = [], parameters: InjectableParameters = [] ) {
 
     return function (target: ComponentMethod, context: ClassMethodDecoratorContext) {
         if (name == "") {
@@ -23,13 +29,15 @@ export function Component(name = "", groups: string[] = []) {
 
             (this["_componentMethods"] as ComponentMethodData[]).push({
                 methodName: context.name as string,
-                name,
-                groups
+                name: name,
+                groups: groups,
+                injectableParameters: parameters
             });
         })
 
 
     }
 }
+
 
 
