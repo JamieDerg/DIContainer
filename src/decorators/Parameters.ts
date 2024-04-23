@@ -15,32 +15,26 @@ import {
  * @param groups Optional, String array containing names this component can be grouped by.
  **
  */
-export function Component(name = "", groups: string[] = []) {
-    console.log("component");
+export function Parameters(parameters: InjectableParameters) {
+
     return function (target: ComponentMethod, context: ClassMethodDecoratorContext) {
-        if (name == "") {
-            name = context.name as string;
-        }
 
         context.addInitializer(function () {
             if (this["_componentMethods"] == undefined) {
                 this["_componentMethods"] = [];
             }
 
-            const methodData = this["_componentMethods"].find(x => x.methodName == context.name);
+            const methodData = this["_componentMethods"].find((x:ComponentMethodData) => x.methodName == context.name);
 
             if(!methodData) {
                 (this["_componentMethods"] as ComponentMethodData[]).push({
                     methodName: context.name as string,
-                    name: name,
-                    groups: groups,
-
+                    injectableParameters: parameters,
                 });
                 return;
             }
 
-            methodData.name = name;
-            methodData.groups = groups;
+            methodData.groinjectableParametersups = parameters;
         })
 
 

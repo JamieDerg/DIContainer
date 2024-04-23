@@ -4,21 +4,24 @@ import {
     Dependency,
     DependencyInstance,
     DependencyType,
-    InjectableParameters,
     instantiatedList,
-    MethodInjectionData, ParameterizedDependency,
+    MethodInjectionData, nodeGraph, ParameterizedDependency,
     PropertyBindData
 } from "./types/Types";
 
+import {Graph} from "graph-data-structure";
 /**
  *  Singleton DependencyContainer class
  */
 export class DependencyContainer {
     private container: Dependency[]
     private dependencyLists: Constructor[];
-    private methodsWithParameters: ParameterizedDependency[]
+    private instantiatedDependencyList: { name: string, instance: any }[];
+    private dependencyMethods: ComponentMethodData[];
     static instance: DependencyContainer;
-
+    private dependencyMethodGraph: nodeGraph;
+    private dependencyInjectionGraph: nodeGraph;
+    private idLength: number = 8;
     /**
      *  Creates the DI Container instance, can only be instanciated once
      * @param dependencyLists a List of Class Constructors containing Components to be added
@@ -30,6 +33,7 @@ export class DependencyContainer {
         }
         this.instance = new DependencyContainer(dependencyLists);
         return this.instance;
+
     }
 
     /**
@@ -38,130 +42,138 @@ export class DependencyContainer {
     public initializeContainer(): void {
         this.dependencyLists.forEach(list => {
             const instanciatedList: instantiatedList = new list();
-
+            const name = this.makeid();
+            this.instantiatedDependencyList.push({
+                    name: name,
+                instance: instanciatedList
+            });
             //no need to add an empty list
             if (instanciatedList._componentMethods == undefined) {
                 return;
             }
 
-            const componentMethodData = instanciatedList._componentMethods;
-            this.addComponentsFromList(componentMethodData, instanciatedList);
+            instanciatedList._componentMethods.forEach(data => {
+                data.list = name;
+                this.dependencyMethods.push(data);
+                this.dependencyMethodGraph.addNode(data.name);
+            })
         });
-
-        this.populateInitialDependencies();
-        this.addComponentsFromLateMethods();
-        this.tryPopulatingMissingDependencies();
-
+        this.populateGraphEdges();
+        this.instanciateDependencies();
+        this.populateProperties();
     }
 
-
-    private addComponentsFromList(componentMethodDataList: ComponentMethodData[], list: instantiatedList) {
-        componentMethodDataList.forEach(methodData => {
-
-            if (methodData.injectableParameters.length != 0) {
-                this.methodsWithParameters.push({
-                    method: list[methodData.methodName],
-                    parameters: methodData.injectableParameters,
-                    name: methodData.name,
-                    groups: methodData.groups
+    private populateGraphEdges() {
+        this.dependencyMethods.forEach(entry => {
+            if(entry.injectableParameters != undefined) {
+                entry.injectableParameters.forEach(parameter => {
+                    const dependencyName = typeof parameter == "string" ? parameter :
+                        (parameter as MethodInjectionData).name
+                    this.dependencyMethodGraph.addEdge(dependencyName, entry.name);
                 })
+            }
+
+            if(entry.groups != undefined && entry.groups.length > 0) {
+                entry.groups.forEach(group => {
+                    this.dependencyMethodGraph.addEdge(group, entry.name)
+                })
+            }
+
+        })
+    }
+
+    private instanciateDependencies() {
+        let dependencyMethods = this.dependencyMethodGraph.topologicalSort();
+
+        dependencyMethods.forEach(dependencyMethod => {
+            let componentMethod = this.dependencyMethods.find(x => x.name == dependencyMethod);
+
+            if(componentMethod == undefined) {
                 return;
             }
 
-            const componentInstance = list[methodData.methodName]() as DependencyInstance;
-            this.addDependency(componentInstance, methodData.name, methodData.groups);
+            let list = this.instantiatedDependencyList.find(x => x.name == componentMethod.list);
+
+            if(componentMethod.injectableParameters != undefined && componentMethod.injectableParameters.length > 0) {
+               this.instantiateParameterizedMethod(componentMethod,list.instance);
+               return;
+            }
+
+            const instance = list.instance[componentMethod.methodName]() as any;
+
+            if(Array.isArray(instance)) {
+                (instance as []).forEach(entry => this.addDependency(entry, this.generateGroupDependencyID(), [componentMethod.name]));
+                return;
+            }
+
+            this.addDependency(instance, componentMethod.name, componentMethod.groups);
         })
     }
 
-    private populateInitialDependencies() {
-        this.container.forEach(entry => this.populateDependency(entry))
-    }
-
-    private tryPopulatingMissingDependencies() {
-        const dependencies = this.container.filter(x => x.hasMissingDependencies);
-        dependencies.forEach(entry => this.populateDependency(entry, false));
-    }
-
-    private addComponentsFromLateMethods() {
-        this.methodsWithParameters.forEach(entry =>  {
-
-            const parameters = entry.parameters.map(parameter => {
-                if(typeof parameter === "string" ) {
-                    return this.getDependency(parameter);
-                }
-
-                const {type, name} = (parameter as MethodInjectionData);
-                return  (type == DependencyType.LIST ? this.getDependencies(name) : this.getDependency(name));
-            })
-
-            const componentInstance = entry.method(...parameters) as DependencyInstance;
-            componentInstance._dependencyBindDataList.forEach( property => {
-                property.missing = true;
-            })
-
-            this.addDependency(componentInstance, entry.name, entry.groups, true);
-
-
-        })
-
-
-    }
-
-    private populateDependency(entry: Dependency, allowMissing: boolean = true) {
-
-        const {instance} = entry
-
-        if (!instance._dependencyBindDataList) {
-            return;
+    private generateGroupDependencyID() {
+        let id = this.makeid();
+        while(this.getDependencyInternal(id)) {
+           id = this.makeid();
         }
 
-        instance._dependencyBindDataList.forEach(dependency => {
-                this.bindDependencyToProperty(dependency, instance, entry, allowMissing);
+        return id;
+    }
+
+    private populateProperties() {
+        this.dependenciesWithBindData.forEach(entry => {
+                const {instance} = entry;
+                instance._dependencyBindDataList.forEach(bindData =>  this.bindDependencyToProperty(bindData, instance));
         });
     }
+    private instantiateParameterizedMethod(componentMethod: ComponentMethodData, listInstance: any) {
+        const parameters = componentMethod.injectableParameters.map(parameter => {
+            if(typeof parameter === "string" ) {
+                return this.getDependency(parameter);
+            }
 
-    private bindDependencyToProperty(dependency: PropertyBindData, instance: DependencyInstance, sourceDependencyEntry: Dependency, allowMissing: boolean) {
-        if(allowMissing) {
-            this.bindDependencyToPropertyAllowingMissingDependencies(dependency, instance, sourceDependencyEntry);
+            const {type, name} = (parameter as MethodInjectionData);
+            return  (type == DependencyType.LIST ? this.getDependencies(name) : this.getDependency(name));
+        })
+
+        const instance = listInstance[componentMethod.methodName](...parameters) as any;
+
+        if(Array.isArray(instance)) {
+            (instance as []).forEach(entry => this.addDependency(entry, this.generateGroupDependencyID(), [componentMethod.name]));
             return;
         }
 
-        this.bindDependencyToPropertyDisallowingMissingDependencies(dependency, instance, sourceDependencyEntry);
+        this.addDependency(instance, componentMethod.name, componentMethod.groups);
+
     }
 
-    private bindDependencyToPropertyAllowingMissingDependencies(dependency: PropertyBindData, instance: DependencyInstance, sourceDependencyEntry: Dependency,) {
-        if (dependency.type == DependencyType.SINGULAR) {
-            try{
-                instance[dependency.property] = this.getDependency(dependency.target);
-                dependency.bound = true;
-            }
-            catch(error: any) {
-                dependency.missing = true;
-                sourceDependencyEntry.hasMissingDependencies = true;
-            }
+    private makeid() {
+        let result = '';
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        const charactersLength = characters.length;
+        let counter = 0;
+        while (counter < this.idLength) {
+            result += characters.charAt(Math.floor(Math.random() * charactersLength));
+            counter += 1;
         }
-
-        try{
-            instance[dependency.property] = this.getDependencies(dependency.target);
-            dependency.bound = true;
-        }
-        catch(error: any) {
-            dependency.missing = true;
-            sourceDependencyEntry.hasMissingDependencies = true;
-        }
+        return result;
     }
 
-    private bindDependencyToPropertyDisallowingMissingDependencies(dependency: PropertyBindData, instance: DependencyInstance, sourceDependencyEntry: Dependency,) {
+
+
+
+    private bindDependencyToProperty(dependency: PropertyBindData, instance: DependencyInstance) {
         if (dependency.type == DependencyType.SINGULAR) {
             instance[dependency.property] = this.getDependency(dependency.target);
             dependency.bound = true;
+            this.dependencyInjectionGraph.addEdge(dependency.target, dependency.property)
             return;
 
         }
 
         instance[dependency.property] = this.getDependencies(dependency.target);
-        dependency.bound = true;
+        this.dependencyMethodGraph.addEdge(dependency.target, dependency.property);
     }
+
 
     /**
      * adds a new Dependency
@@ -169,13 +181,14 @@ export class DependencyContainer {
      * @param name the name it will be registered with
      * @throws Error if a dependency under given name alreay exists
      */
-    public addDependency(instance: any, name: string, groups: string[] = [], hasMissingDependencies: boolean = false) {
+    public addDependency(instance: any, name: string, groups: string[] = []) {
 
         if (this.container.find(x => x.name == name)) {
             throw new Error("This Dependency has already Been Added!");
         }
-
-        this.container.push({instance, name, groups, hasMissingDependencies});
+        const dependency = {instance, name, groups}
+        this.container.push(dependency);
+        return dependency;
     }
 
     /**
@@ -184,7 +197,7 @@ export class DependencyContainer {
      * @throws Error if a dependency under given name doesent exists
      */
     public getDependency(name: string): any {
-        const dependency = this.container.find(x => x.name == name);
+        const dependency = this.getDependencyInternal(name);
         if (!dependency) {
             throw new Error(`No dependency with name: ${name} found!`);
         }
@@ -192,19 +205,30 @@ export class DependencyContainer {
         return dependency.instance;
     }
 
+    private getDependencyInternal(name: string): Dependency {
+        return this.container.find(x => x.name == name);
+    }
+
     public getDependencies(group: string): any[] {
         const dependencies = this.container.filter(x => x.groups.find(y => y == group));
         if (dependencies.length == 0) {
-            throw new Error(`No Dependencies off group ${group} could be found!`)
+            return []
         }
         return dependencies.map(dependency => dependency.instance);
+    }
+
+    private get dependenciesWithBindData() {
+        return this.container.filter(x => x.instance?._dependencyBindDataList != undefined && x.instance?._dependencyBindDataList.length > 0)
     }
 
 
     private constructor(dependencyLists: Constructor[]) {
         this.dependencyLists = dependencyLists;
         this.container = [];
-        this.methodsWithParameters = [];
+        this.instantiatedDependencyList = [];
+        this.dependencyMethods = [];
+        this.dependencyMethodGraph = Graph();
+        this.dependencyInjectionGraph = Graph();
     }
 
 

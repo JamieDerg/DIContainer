@@ -8,17 +8,16 @@ import {PropertyBindData, DependencyType, MethodInjectionData} from "../types/Ty
  */
 export function Inject(name: string) {
     return function (target: any, context: ClassFieldDecoratorContext) {
-        context.addInitializer(function () {
+        return function (this: any) {
             if (this["_dependencyBindDataList"] == undefined) {
                 this["_dependencyBindDataList"] = [];
             }
-
             (this["_dependencyBindDataList"] as PropertyBindData[]).push({
                 property: context.name as string,
                 target: name,
                 type: DependencyType.SINGULAR
             });
-        })
+        }
     }
 }
 

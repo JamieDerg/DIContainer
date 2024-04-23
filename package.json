@@ -3,11 +3,14 @@
   "version": "1.0.0",
   "description": "A simple Decorator based DI container",
   "main": "dist/index.js",
+  "type": "module",
   "exports": {
     ".": "./dist/index.js"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "run-p -s build:*",
+    "build:main": "babel -x .ts -d dist src",
+    "build:types": "tsc"
   },
   "keywords": [
     "dependencyInjection"
@@ -15,6 +18,15 @@
   "author": "JamieDerg",
   "license": "ISC",
   "devDependencies": {
+    "@babel/cli": "^7.23.9",
+    "@babel/plugin-proposal-decorators": "^7.23.9",
+    "@babel/preset-typescript": "^7.23.3",
+    "@types/node": "^20.11.17",
+    "babel-plugin-add-import-extension": "^1.6.0",
     "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@babel/preset-env": "^7.23.9",
+    "graph-data-structure": "^3.5.0"
   }
 }

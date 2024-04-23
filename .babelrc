@@ -1,0 +1,16 @@
+{
+  "presets": [
+    [
+      "@babel/env",
+      {
+        "modules": false,
+        "targets": {
+          "node": "18"
+        }
+      }
+    ],
+    "@babel/typescript"
+  ],
+  "sourceMaps": true,
+  "plugins": ["add-import-extension",["@babel/plugin-proposal-decorators", { "version": "2023-05" }]]
+}

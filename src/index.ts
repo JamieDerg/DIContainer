@@ -1,3 +1,3 @@
 export {DependencyContainer} from "./DependencyContainer"
-export * from "./decorators"
+export * from "./decorators/index"
 export {DependencyType} from "./types/Types"

@@ -1,10 +1,10 @@
+import {EdgeWeight, NodeId, Serialized} from "graph-data-structure";
 
 
 export type Dependency = {
     instance?: DependencyInstance;
     name: string
     groups: string[]
-    hasMissingDependencies?: boolean
 }
 
 export type ParameterizedDependency = Dependency & {
@@ -22,9 +22,10 @@ export type ComponentMethod = (...any) => any
 export type InjectableParameters = (string | MethodInjectionData) []
 export type ComponentMethodData = {
     methodName: string,
-    name: string,
-    injectableParameters: InjectableParameters
-    groups: string[]
+    name?: string,
+    injectableParameters?: InjectableParameters
+    groups?: string[]
+    list?: string
 }
 
 export type MethodInjectionData = {
@@ -43,4 +44,30 @@ export type PropertyBindData = {
 export enum DependencyType {
     SINGULAR,
     LIST,
+}
+
+export type nodeGraph = {
+    addNode: (node: NodeId) => any;
+    removeNode: (node: NodeId) => any;
+    nodes: () => NodeId[];
+    adjacent: (node: NodeId) => NodeId[];
+    addEdge: (u: NodeId, v: NodeId, weight?: EdgeWeight) => any;
+    removeEdge: (u: NodeId, v: NodeId) => any;
+    hasEdge: (u: NodeId, v: NodeId) => boolean;
+    setEdgeWeight: (u: NodeId, v: NodeId, weight: EdgeWeight) => any;
+    getEdgeWeight: (u: NodeId, v: NodeId) => EdgeWeight;
+    indegree: (node: NodeId) => number;
+    outdegree: (node: NodeId) => number;
+    depthFirstSearch: (sourceNodes?: NodeId[], includeSourceNodes?: boolean, errorOnCycle?: boolean) => string[];
+    hasCycle: () => boolean;
+    lowestCommonAncestors: (node1: NodeId, node2: NodeId) => string[];
+    topologicalSort: (sourceNodes?: NodeId[], includeSourceNodes?: boolean) => string[];
+    shortestPath: (source: NodeId, destination: NodeId) => string[] & {
+        weight?: number | undefined;
+    };
+    shortestPaths: (source: NodeId, destination: NodeId) => (string[] & {
+        weight?: number | undefined;
+    })[];
+    serialize: () => Serialized;
+    deserialize: (serialized: Serialized) => any;
 }
