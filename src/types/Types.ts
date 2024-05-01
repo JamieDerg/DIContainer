@@ -1,4 +1,5 @@
 import {EdgeWeight, NodeId, Serialized} from "graph-data-structure";
+import {DependencyContainer} from "../DependencyContainer";
 
 
 export type Dependency = {
@@ -46,6 +47,9 @@ export enum DependencyType {
     LIST,
 }
 
+export type EventHandler = (container: DependencyContainer) => void;
+
+
 export type nodeGraph = {
     addNode: (node: NodeId) => any;
     removeNode: (node: NodeId) => any;
@@ -71,3 +75,4 @@ export type nodeGraph = {
     serialize: () => Serialized;
     deserialize: (serialized: Serialized) => any;
 }
+

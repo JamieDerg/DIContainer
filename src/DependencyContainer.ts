@@ -3,7 +3,7 @@ import {
     Constructor,
     Dependency,
     DependencyInstance,
-    DependencyType,
+    DependencyType, EventHandler,
     instantiatedList,
     MethodInjectionData, nodeGraph, ParameterizedDependency,
     PropertyBindData
@@ -22,6 +22,7 @@ export class DependencyContainer {
     private dependencyMethodGraph: nodeGraph;
     private dependencyInjectionGraph: nodeGraph;
     private idLength: number = 8;
+    private onInitEventHandler: EventHandler;
     /**
      *  Creates the DI Container instance, can only be instanciated once
      * @param dependencyLists a List of Class Constructors containing Components to be added
@@ -34,6 +35,13 @@ export class DependencyContainer {
         this.instance = new DependencyContainer(dependencyLists);
         return this.instance;
 
+    }
+
+    /**
+     * Will fire once the container and all the dependencies have been initialized
+     */
+    public onInitFinished(eventHandler: EventHandler){
+        this.onInitEventHandler = eventHandler;
     }
 
     /**
@@ -61,6 +69,10 @@ export class DependencyContainer {
         this.populateGraphEdges();
         this.instanciateDependencies();
         this.populateProperties();
+
+        if(this.onInitEventHandler){
+            this.onInitEventHandler(this);
+        }
     }
 
     private populateGraphEdges() {
@@ -157,9 +169,6 @@ export class DependencyContainer {
         }
         return result;
     }
-
-
-
 
     private bindDependencyToProperty(dependency: PropertyBindData, instance: DependencyInstance) {
         if (dependency.type == DependencyType.SINGULAR) {

@@ -9,7 +9,7 @@ import {PropertyBindData, DependencyType} from "../types/Types";
 export function InjectList(group: string) {
     console.log("inject")
     return function (target: any[], context: ClassFieldDecoratorContext) {
-        context.addInitializer(function () {
+        return function (this: any) {
             if (this["_dependencyBindDataList"] == undefined) {
                 this["_dependencyBindDataList"] = [];
             }
@@ -19,7 +19,7 @@ export function InjectList(group: string) {
                 target: group,
                 type: DependencyType.LIST
             });
-        })
+        }
     }
 
 }

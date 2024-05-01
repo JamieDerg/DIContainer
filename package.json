@@ -4,6 +4,7 @@
   "description": "A simple Decorator based DI container",
   "main": "dist/index.js",
   "type": "module",
+  "types": "src/index.ts",
   "exports": {
     ".": "./dist/index.js"
   },
@@ -23,6 +24,7 @@
     "@babel/preset-typescript": "^7.23.3",
     "@types/node": "^20.11.17",
     "babel-plugin-add-import-extension": "^1.6.0",
+    "npm-run-all": "^4.1.5",
     "typescript": "^5.3.3"
   },
   "dependencies": {
