@@ -5,7 +5,7 @@ import {DependencyContainer} from "../DependencyContainer";
 export type Dependency = {
     instance?: DependencyInstance;
     name: string
-    groups: string[]
+    tags: string[]
 }
 
 export type ParameterizedDependency = Dependency & {
@@ -25,7 +25,7 @@ export type ComponentMethodData = {
     methodName: string,
     name?: string,
     injectableParameters?: InjectableParameters
-    groups?: string[]
+    tags?: string[]
     list?: string
 }
 

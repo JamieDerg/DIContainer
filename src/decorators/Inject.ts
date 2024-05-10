@@ -8,7 +8,7 @@ import {PropertyBindData, DependencyType, MethodInjectionData} from "../types/Ty
  */
 export function Inject(name: string) {
     return function (target: any, context: ClassFieldDecoratorContext) {
-        return function (this: any) {
+        return function (this: any): any {
             if (this["_dependencyBindDataList"] == undefined) {
                 this["_dependencyBindDataList"] = [];
             }

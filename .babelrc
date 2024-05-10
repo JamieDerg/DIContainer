@@ -12,5 +12,5 @@
     "@babel/typescript"
   ],
   "sourceMaps": true,
-  "plugins": ["add-import-extension",["@babel/plugin-proposal-decorators", { "version": "2023-05" }]]
+  "plugins": ["add-import-extension",["@babel/plugin-proposal-decorators", { "version": "2023-11" }]]
 }

@@ -9,6 +9,8 @@
     ".": "./dist/index.js"
   },
   "scripts": {
+    "start": "node ./dist/app.js",
+    "prestart": "npm run build",
     "build": "run-p -s build:*",
     "build:main": "babel -x .ts -d dist src",
     "build:types": "tsc"
@@ -29,6 +31,7 @@
   },
   "dependencies": {
     "@babel/preset-env": "^7.23.9",
+    "glob": "^10.3.14",
     "graph-data-structure": "^3.5.0"
   }
 }

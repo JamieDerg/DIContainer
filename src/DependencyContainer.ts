@@ -1,4 +1,5 @@
 import {
+    ComponentMethod,
     ComponentMethodData,
     Constructor,
     Dependency,
@@ -10,31 +11,54 @@ import {
 } from "./types/Types";
 
 import {Graph} from "graph-data-structure";
+import {globSync} from "glob";
+import * as _path from "node:path";
+import {getCurrentClassDecoratorData} from "./decorators";
+
+type scannedDependencyData = {
+    name: string,
+    tags: string[]
+constructor: Constructor;
+}
 /**
  *  Singleton DependencyContainer class
  */
 export class DependencyContainer {
     private container: Dependency[]
-    private dependencyLists: Constructor[];
+    private configurations: Constructor[];
     private instantiatedDependencyList: { name: string, instance: any }[];
     private dependencyMethods: ComponentMethodData[];
     static instance: DependencyContainer;
     private dependencyMethodGraph: nodeGraph;
     private dependencyInjectionGraph: nodeGraph;
-    private idLength: number = 8;
+    private idLength: number = 10;
+    private scanPaths: string[]
     private onInitEventHandler: EventHandler;
+    private scanDependencies: scannedDependencyData[]
     /**
      *  Creates the DI Container instance, can only be instanciated once
-     * @param dependencyLists a List of Class Constructors containing Components to be added
      * @throws Error if the Instance has already been instanciated
      */
-    public static createInstance(dependencyLists: Constructor[]) {
+    public static createInstance() {
         if (this.instance != undefined) {
             throw new Error("The Container has already been created!")
         }
-        this.instance = new DependencyContainer(dependencyLists);
+        this.instance = new DependencyContainer();
         return this.instance;
 
+    }
+
+    /**
+     *  Will register given registration classes
+     * @param configurations
+     */
+
+    public addConfigurations(...configurations: Constructor[]) {
+        this.configurations.push(...configurations);
+    }
+
+    public addComponentScanPaths(...paths: string[]) {
+        this.scanPaths.push(...paths);
     }
 
     /**
@@ -47,8 +71,8 @@ export class DependencyContainer {
     /**
      * Will initialize and populate Dependencies
      */
-    public initializeContainer(): void {
-        this.dependencyLists.forEach(list => {
+    public async initializeContainer(): Promise<void> {
+        this.configurations.forEach(list => {
             const instanciatedList: instantiatedList = new list();
             const name = this.makeid();
             this.instantiatedDependencyList.push({
@@ -66,6 +90,16 @@ export class DependencyContainer {
                 this.dependencyMethodGraph.addNode(data.name);
             })
         });
+
+        for (const path of this.scanPaths) {
+            const result = globSync(_path.join(process.cwd(), path));
+             for (const file of result) {
+                await import(file);
+                const data = getCurrentClassDecoratorData();
+                this.dependencyMethodGraph.addNode(data.name);
+                this.scanDependencies.push(data);
+            }
+        }
         this.populateGraphEdges();
         this.instanciateDependencies();
         this.populateProperties();
@@ -85,12 +119,20 @@ export class DependencyContainer {
                 })
             }
 
-            if(entry.groups != undefined && entry.groups.length > 0) {
-                entry.groups.forEach(group => {
-                    this.dependencyMethodGraph.addEdge(group, entry.name)
+            if(entry.tags != undefined && entry.tags.length > 0) {
+                entry.tags.forEach(tag => {
+                    this.dependencyMethodGraph.addEdge(tag, entry.name)
                 })
             }
 
+        })
+
+        this.scanDependencies.forEach(entry => {
+            if(entry.tags != undefined && entry.tags.length > 0) {
+                entry.tags.forEach(tag => {
+                    this.dependencyMethodGraph.addEdge(tag, entry.name);
+                })
+            }
         })
     }
 
@@ -99,28 +141,40 @@ export class DependencyContainer {
 
         dependencyMethods.forEach(dependencyMethod => {
             let componentMethod = this.dependencyMethods.find(x => x.name == dependencyMethod);
+            let scanEntry = this.scanDependencies.find(x => x.name == dependencyMethod);
 
-            if(componentMethod == undefined) {
+            if(componentMethod == undefined && scanEntry == undefined) {
                 return;
             }
 
-            let list = this.instantiatedDependencyList.find(x => x.name == componentMethod.list);
-
-            if(componentMethod.injectableParameters != undefined && componentMethod.injectableParameters.length > 0) {
-               this.instantiateParameterizedMethod(componentMethod,list.instance);
-               return;
-            }
-
-            const instance = list.instance[componentMethod.methodName]() as any;
-
-            if(Array.isArray(instance)) {
-                (instance as []).forEach(entry => this.addDependency(entry, this.generateGroupDependencyID(), [componentMethod.name]));
+            if(componentMethod != undefined) {
+                this.instanciateComponentMethodEntry(componentMethod);
                 return;
             }
 
-            this.addDependency(instance, componentMethod.name, componentMethod.groups);
+            const instance = new scanEntry.constructor();
+            this.addDependency(instance, scanEntry.name, scanEntry.tags);
         })
+
     }
+
+    private instanciateComponentMethodEntry(componentMethod: ComponentMethodData,) {
+        let list = this.instantiatedDependencyList.find(x => x.name == componentMethod.list);
+
+        if(componentMethod.injectableParameters != undefined && componentMethod.injectableParameters.length > 0) {
+            this.instantiateParameterizedMethod(componentMethod,list.instance);
+            return;
+        }
+
+        const instance = list.instance[componentMethod.methodName]() as any;
+        if(Array.isArray(instance)) {
+            (instance as []).forEach(entry => this.addDependency(entry, this.generateGroupDependencyID(), [componentMethod.name]));
+            return;
+        }
+
+        this.addDependency(instance, componentMethod.name, componentMethod.tags);
+    }
+
 
     private generateGroupDependencyID() {
         let id = this.makeid();
@@ -154,7 +208,7 @@ export class DependencyContainer {
             return;
         }
 
-        this.addDependency(instance, componentMethod.name, componentMethod.groups);
+        this.addDependency(instance, componentMethod.name, componentMethod.tags);
 
     }
 
@@ -190,12 +244,12 @@ export class DependencyContainer {
      * @param name the name it will be registered with
      * @throws Error if a dependency under given name alreay exists
      */
-    public addDependency(instance: any, name: string, groups: string[] = []) {
+    public addDependency(instance: any, name: string, tags: string[] = []) {
 
         if (this.container.find(x => x.name == name)) {
             throw new Error("This Dependency has already Been Added!");
         }
-        const dependency = {instance, name, groups}
+        const dependency = {instance, name, tags: tags}
         this.container.push(dependency);
         return dependency;
     }
@@ -219,7 +273,7 @@ export class DependencyContainer {
     }
 
     public getDependencies(group: string): any[] {
-        const dependencies = this.container.filter(x => x.groups.find(y => y == group));
+        const dependencies = this.container.filter(x => x.tags.find(y => y == group));
         if (dependencies.length == 0) {
             return []
         }
@@ -231,11 +285,13 @@ export class DependencyContainer {
     }
 
 
-    private constructor(dependencyLists: Constructor[]) {
-        this.dependencyLists = dependencyLists;
+    private constructor() {
+        this.configurations = [];
         this.container = [];
         this.instantiatedDependencyList = [];
         this.dependencyMethods = [];
+        this.scanPaths = []
+        this.scanDependencies = []
         this.dependencyMethodGraph = Graph();
         this.dependencyInjectionGraph = Graph();
     }
