@@ -20,10 +20,10 @@ const _currentData = {
     name: undefined,
     tags: undefined,
     constructor: undefined,
+    initializerMethodName: undefined,
 };
 
 export function Component(name = "", ...tags: string[]) {
-
     return function (target: ComponentMethod | Constructor, context: ClassMethodDecoratorContext | ClassDecoratorContext) {
         if(context.kind == "method") {
             invokeAsMethodDecorator(name, tags, context);
@@ -74,6 +74,7 @@ export function resetClassDecoratorData() {
     _currentData.name = undefined;
     _currentData.tags = undefined
     _currentData.constructor = undefined;
+    _currentData.initializerMethodName = undefined;
 }
 
 function invokeAsClassDecorator(name: string, tags: string[], target: Constructor, context: ClassDecoratorContext) {

@@ -1,3 +1,3 @@
-export {DependencyContainer} from "./DependencyContainer"
-export {Component, Inject, InjectList, Parameters, Tagged} from "./decorators"
-export {DependencyType} from "./types/Types"
+export {DependencyContainer} from "./DependencyContainer.js"
+export {Component, Inject, InjectList, Parameters, Tagged, Init} from "./decorators"
+export {DependencyType} from "./types/Types.js"

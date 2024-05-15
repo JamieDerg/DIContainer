@@ -1,4 +1,4 @@
-import {PropertyBindData, DependencyType, MethodInjectionData} from "../types/Types";
+import {PropertyBindData, DependencyType, MethodInjectionData} from "../types/Types.js";
 
 /**
  * Class Property Decorator, will inject the given Dependency in decorate property

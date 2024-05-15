@@ -31,7 +31,11 @@
   },
   "dependencies": {
     "@babel/preset-env": "^7.23.9",
+    "@types/pino": "^7.0.5",
+    "@types/pino-pretty": "^5.0.0",
     "glob": "^10.3.14",
-    "graph-data-structure": "^3.5.0"
+    "graph-data-structure": "^3.5.0",
+    "pino": "^9.0.0",
+    "pino-pretty": "^11.0.0"
   }
 }

@@ -13,7 +13,7 @@ import {
 import {Graph} from "graph-data-structure";
 import {globSync} from "glob";
 import * as _path from "node:path";
-import {getCurrentClassDecoratorData} from "./decorators";
+import {getCurrentClassDecoratorData, resetClassDecoratorData} from "./decorators";
 
 type scannedDependencyData = {
     name: string,
@@ -72,11 +72,28 @@ export class DependencyContainer {
      * Will initialize and populate Dependencies
      */
     public async initializeContainer(): Promise<void> {
+
+        this.initializeConfigs();
+        await this.initializeDependencyScanPaths();
+        this.populateGraphEdges();
+        this.instanciateDependencies();
+        this.populateProperties();
+
+        this.dependenciesWithInitializerMethod.forEach(entry => {
+            entry.instance[entry.instance._initializerMethod]();
+        })
+
+        if(this.onInitEventHandler){
+            this.onInitEventHandler(this);
+        }
+    }
+
+    private initializeConfigs() {
         this.configurations.forEach(list => {
             const instanciatedList: instantiatedList = new list();
             const name = this.makeid();
             this.instantiatedDependencyList.push({
-                    name: name,
+                name: name,
                 instance: instanciatedList
             });
             //no need to add an empty list
@@ -89,26 +106,31 @@ export class DependencyContainer {
                 this.dependencyMethods.push(data);
                 this.dependencyMethodGraph.addNode(data.name);
             })
-        });
-
-        for (const path of this.scanPaths) {
-            const result = globSync(_path.join(process.cwd(), path));
-             for (const file of result) {
-                await import(file);
-                const data = getCurrentClassDecoratorData();
-                this.dependencyMethodGraph.addNode(data.name);
-                this.scanDependencies.push(data);
-            }
-        }
-        this.populateGraphEdges();
-        this.instanciateDependencies();
-        this.populateProperties();
-
-        if(this.onInitEventHandler){
-            this.onInitEventHandler(this);
-        }
+        })
     }
 
+    private async initializeDependencyScanPaths() {
+        for (const scanPath of this.scanPaths) {
+            const result = globSync( scanPath, {absolute: true});
+            for (const file of result) {
+                await import("file://" + file);
+
+                const data = getCurrentClassDecoratorData();
+
+                if(data.name == undefined) {
+                    continue;
+                }
+
+                this.dependencyMethodGraph.addNode(data.name);
+                this.scanDependencies.push({
+                    name: data.name,
+                    tags: data.tags,
+                    constructor: data.constructor
+                });
+                resetClassDecoratorData();
+            }
+        }
+    }
     private populateGraphEdges() {
         this.dependencyMethods.forEach(entry => {
             if(entry.injectableParameters != undefined) {
@@ -282,6 +304,10 @@ export class DependencyContainer {
 
     private get dependenciesWithBindData() {
         return this.container.filter(x => x.instance?._dependencyBindDataList != undefined && x.instance?._dependencyBindDataList.length > 0)
+    }
+
+    private get dependenciesWithInitializerMethod() {
+        return this.container.filter(x => x.instance?._initializerMethod != undefined)
     }
 
 

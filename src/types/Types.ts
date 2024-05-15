@@ -1,5 +1,5 @@
 import {EdgeWeight, NodeId, Serialized} from "graph-data-structure";
-import {DependencyContainer} from "../DependencyContainer";
+import {DependencyContainer} from "../DependencyContainer.js";
 
 
 export type Dependency = {
@@ -13,7 +13,10 @@ export type ParameterizedDependency = Dependency & {
     parameters: InjectableParameters,
 }
 
-export type DependencyInstance = { _dependencyBindDataList: PropertyBindData[] };
+export type DependencyInstance = {
+    _dependencyBindDataList?: PropertyBindData[],
+    _initializerMethod?: string
+};
 
 export type instantiatedList = {_componentMethods?: ComponentMethodData[]}
 
@@ -27,6 +30,8 @@ export type ComponentMethodData = {
     injectableParameters?: InjectableParameters
     tags?: string[]
     list?: string
+    configuration?: boolean
+    initializationMethod?: string,
 }
 
 export type MethodInjectionData = {
