@@ -1,24 +1,24 @@
 import {
-    ComponentMethod,
     ComponentMethodData,
     Constructor,
     Dependency,
     DependencyInstance,
-    DependencyType, EventHandler,
+    DependencyType,
+    EventHandler,
     instantiatedList,
-    MethodInjectionData, nodeGraph, ParameterizedDependency,
+    MethodInjectionData,
+    nodeGraph,
     PropertyBindData
 } from "./types/Types";
 
 import {Graph} from "graph-data-structure";
 import {globSync} from "glob";
-import * as _path from "node:path";
 import {getCurrentClassDecoratorData, resetClassDecoratorData} from "./decorators";
 
-type scannedDependencyData = {
+type ScannedDependencyData = {
     name: string,
     tags: string[]
-constructor: Constructor;
+    constructor: Constructor;
 }
 /**
  *  Singleton DependencyContainer class
@@ -27,14 +27,19 @@ export class DependencyContainer {
     private container: Dependency[]
     private configurations: Constructor[];
     private instantiatedDependencyList: { name: string, instance: any }[];
+
     private dependencyMethods: ComponentMethodData[];
     static instance: DependencyContainer;
+
     private dependencyMethodGraph: nodeGraph;
     private dependencyInjectionGraph: nodeGraph;
+
     private idLength: number = 10;
-    private scanPaths: string[]
+    private readonly scanPaths: string[]
+
     private onInitEventHandler: EventHandler;
-    private scanDependencies: scannedDependencyData[]
+    private scanDependencies: ScannedDependencyData[]
+
     /**
      *  Creates the DI Container instance, can only be instanciated once
      * @throws Error if the Instance has already been instanciated
@@ -57,6 +62,10 @@ export class DependencyContainer {
         this.configurations.push(...configurations);
     }
 
+    /**
+     *  Will use given path so scan for decorated components.
+     * @param paths a list of paths to use for scanning
+     */
     public addComponentScanPaths(...paths: string[]) {
         this.scanPaths.push(...paths);
     }
@@ -90,12 +99,17 @@ export class DependencyContainer {
 
     private initializeConfigs() {
         this.configurations.forEach(list => {
-            const instanciatedList: instantiatedList = new list();
+            const instanciatedList: instantiatedList = new list()
+            let tries = 0;
+
             const name = this.makeid();
+            
+
             this.instantiatedDependencyList.push({
                 name: name,
                 instance: instanciatedList
             });
+
             //no need to add an empty list
             if (instanciatedList._componentMethods == undefined) {
                 return;
@@ -200,8 +214,15 @@ export class DependencyContainer {
 
     private generateGroupDependencyID() {
         let id = this.makeid();
+        let tries = 0;
+
         while(this.getDependencyInternal(id)) {
            id = this.makeid();
+
+           if(tries >= 10 ) {
+               throw new Error("Could not generate a valid ID!");
+           }
+
         }
 
         return id;
