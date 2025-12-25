@@ -16,6 +16,7 @@ export type ParameterizedDependency = Dependency & {
 export type DependencyInstance = {
     _dependencyBindDataList?: PropertyBindData[],
     _initializerMethod?: string
+    _dependencyInjectionID: string
 };
 
 export type instantiatedList = {_componentMethods?: ComponentMethodData[]}
@@ -32,6 +33,7 @@ export type ComponentMethodData = {
     list?: string
     configuration?: boolean
     initializationMethod?: string,
+    metadata?: Record<string, any>
 }
 
 export type MethodInjectionData = {

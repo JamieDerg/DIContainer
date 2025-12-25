@@ -21,10 +21,11 @@ const _currentData = {
     tags: undefined,
     constructor: undefined,
     initializerMethodName: undefined,
+    metadata: undefined,
 };
 
-export function Component(name = "", ...tags: string[]) {
-    return function (target: ComponentMethod | Constructor, context: ClassMethodDecoratorContext | ClassDecoratorContext) {
+export function Component<targetType = ComponentMethod | Constructor>(name = "", tags: string[]): (target: targetType, context: ClassMethodDecoratorContext | ClassDecoratorContext) => void {
+    return function (target: targetType, context: ClassMethodDecoratorContext | ClassDecoratorContext) {
         if(context.kind == "method") {
             invokeAsMethodDecorator(name, tags, context);
             return;
@@ -84,6 +85,10 @@ function invokeAsClassDecorator(name: string, tags: string[], target: Constructo
 
     if(!_currentData.tags) {
         _currentData.tags = [];
+    }
+
+    if(!_currentData.metadata) {
+        _currentData.metadata = {};
     }
 
     _currentData.name = name;

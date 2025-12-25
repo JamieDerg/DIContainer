@@ -19,6 +19,7 @@ type ScannedDependencyData = {
     name: string,
     tags: string[]
     constructor: Constructor;
+    metadata: Record<string, any>;
 }
 /**
  *  Singleton DependencyContainer class
@@ -39,6 +40,8 @@ export class DependencyContainer {
 
     private onInitEventHandler: EventHandler;
     private scanDependencies: ScannedDependencyData[]
+
+    private metadata: Record<string, Record<string,any>>
 
     /**
      *  Creates the DI Container instance, can only be instanciated once
@@ -97,6 +100,21 @@ export class DependencyContainer {
         }
     }
 
+    public getMetadataForDependency(dependency: any, name: string): Record<string, any> | undefined {
+        const instance = dependency as DependencyInstance;
+
+        if(!instance._dependencyInjectionID) {
+            return undefined
+        }
+
+        if(!this.metadata[instance._dependencyInjectionID]) {
+            return undefined;
+        }
+
+        return  this.metadata[instance._dependencyInjectionID][name];
+    }
+
+
     private initializeConfigs() {
         this.configurations.forEach(list => {
             const instanciatedList: instantiatedList = new list()
@@ -139,7 +157,8 @@ export class DependencyContainer {
                 this.scanDependencies.push({
                     name: data.name,
                     tags: data.tags,
-                    constructor: data.constructor
+                    constructor: data.constructor,
+                    metadata: data.metadata
                 });
                 resetClassDecoratorData();
             }
@@ -189,7 +208,9 @@ export class DependencyContainer {
             }
 
             const instance = new scanEntry.constructor();
-            this.addDependency(instance, scanEntry.name, scanEntry.tags);
+
+
+            this.addDependency(instance, scanEntry.name, scanEntry.tags, scanEntry.metadata);
         })
 
     }
@@ -204,11 +225,14 @@ export class DependencyContainer {
 
         const instance = list.instance[componentMethod.methodName]() as any;
         if(Array.isArray(instance)) {
-            (instance as []).forEach(entry => this.addDependency(entry, this.generateGroupDependencyID(), [componentMethod.name]));
+            (instance as any[]).forEach(entry => {
+                this.addDependency(entry, this.generateGroupDependencyID(), [componentMethod.name], componentMethod.metadata)
+            });
             return;
         }
 
-        this.addDependency(instance, componentMethod.name, componentMethod.tags);
+
+        this.addDependency(instance, componentMethod.name, componentMethod.tags, instance.metadata);
     }
 
 
@@ -285,13 +309,19 @@ export class DependencyContainer {
      * adds a new Dependency
      * @param instance the object to be added
      * @param name the name it will be registered with
+     * @param tags tags to be associated with this dependency
+     * @param metadata optional metadata to be associated with this dependency
      * @throws Error if a dependency under given name alreay exists
      */
-    public addDependency(instance: any, name: string, tags: string[] = []) {
+    public addDependency(instance: any, name: string, tags: string[] = [], metadata: Record<string, any> = {}): Dependency {
 
         if (this.container.find(x => x.name == name)) {
             throw new Error("This Dependency has already Been Added!");
         }
+
+        this.metadata[name] = metadata;
+        (instance as DependencyInstance)._dependencyInjectionID = name;
+
         const dependency = {instance, name, tags: tags}
         this.container.push(dependency);
         return dependency;
@@ -341,6 +371,8 @@ export class DependencyContainer {
         this.scanDependencies = []
         this.dependencyMethodGraph = Graph();
         this.dependencyInjectionGraph = Graph();
+        this.metadata = {};
+        this.addDependency(this, "depencencyContainer");
     }
 
 

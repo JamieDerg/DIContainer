@@ -8,6 +8,7 @@
   "exports": {
     ".": "./dist/index.js"
   },
+
   "scripts": {
     "start": "node ./dist/app.js",
     "prestart": "npm run build",
