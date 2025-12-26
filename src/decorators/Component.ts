@@ -24,7 +24,7 @@ const _currentData = {
     metadata: undefined,
 };
 
-export function Component<targetType = ComponentMethod | Constructor>(name = "", tags: string[]): (target: targetType, context: ClassMethodDecoratorContext | ClassDecoratorContext) => void {
+export function Component<targetType = ComponentMethod | Constructor>(name = "", ...tags: string[]): (target: targetType, context: ClassMethodDecoratorContext | ClassDecoratorContext) => void {
     return function (target: targetType, context: ClassMethodDecoratorContext | ClassDecoratorContext) {
         if(context.kind == "method") {
             invokeAsMethodDecorator(name, tags, context);
